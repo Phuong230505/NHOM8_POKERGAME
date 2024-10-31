@@ -701,30 +701,50 @@ namespace CK
                 return false; // Tiếp tục trò chơi
             }
 
-            private List<Player> FindWinner()
+           private List<Player> FindWinner()
+{
+    List<Player> winners = new List<Player>(); // Danh sách lưu trữ những người chơi chiến thắng
+    int bestHandStrength = 0;
+    int bestHighCard = 0;
+
+    // Kiểm tra nếu bài của người chơi hiện tại mạnh hơn bài mạnh nhất hiện tại
+    foreach (var player in players.Where(p => p.InGame && !p.HasFolded))
+    {
+        var (handStrength, _) = HandEvaluator.EvaluateHand(player.Hand, communityCards); // Đánh giá sức mạnh của bộ bài
+        int playerHighCard = HandEvaluator.GetHighCardValue(player.Hand.Concat(communityCards).ToList()); // Lấy giá trị high card của người chơi
+
+        if (handStrength > bestHandStrength)
+        {
+            bestHandStrength = handStrength; // Cập nhật giá trị mạnh nhất
+            bestHighCard = playerHighCard;   // Cập nhật giá trị high card cao nhất
+            winners.Clear(); // Xóa danh sách người thắng cũ
+            winners.Add(player); // Thêm người chơi này vào danh sách người thắng
+        }
+        else if (handStrength == bestHandStrength)
+        {
+            if (handStrength == 1) // Trường hợp cả hai tay bài đều là High Card
             {
-                List<Player> winners = new List<Player>(); // Danh sách lưu trữ những người chơi chiến thắng
-                int bestHandStrength = 0;
-
-                // Kiểm tra nếu bài của người chơi hiện tại mạnh hơn bài mạnh nhất hiện tại
-                foreach (var player in players.Where(p => p.InGame && !p.HasFolded))
+                if (playerHighCard > bestHighCard) // Nếu high card của người chơi hiện tại lớn hơn
                 {
-                    var (handStrength, _) = HandEvaluator.EvaluateHand(player.Hand, communityCards); // Đánh giá sức mạnh của bộ bài
-
-                    if (handStrength > bestHandStrength)
-                    {
-                        bestHandStrength = handStrength; // Cập nhật giá trị mạnh nhất
-                        winners.Clear(); // Xóa danh sách người thắng cũ
-                        winners.Add(player); // Thêm người chơi này vào danh sách người thắng
-                    }
-                    else if (handStrength == bestHandStrength)
-                    {
-                        winners.Add(player); // Thêm người chơi vào danh sách nếu bài của họ mạnh bằng bài mạnh nhất
-                    }
+                    bestHighCard = playerHighCard; // Cập nhật giá trị high card cao nhất
+                    winners.Clear(); // Xóa danh sách người thắng cũ
+                    winners.Add(player); // Thêm người chơi này vào danh sách người thắng
                 }
-
-                return winners;
+                else if (playerHighCard == bestHighCard)
+                {
+                    winners.Add(player); // Thêm người chơi nếu high card bằng nhau
+                }
             }
+            else
+            {
+                winners.Add(player); // Thêm người chơi vào danh sách nếu bài của họ mạnh bằng bài mạnh nhất
+            }
+        }
+    }
+
+    return winners;
+}
+
 
             private void Showdown()
             {
@@ -783,62 +803,74 @@ namespace CK
             }
 
             public void DisplayLeaderboard()
+{
+    // Lọc danh sách người chơi chỉ bao gồm những người không bỏ bài
+    var activePlayers = players
+        .Where(p => p.InGame && !p.HasFolded)
+        .ToList();
+
+    if (activePlayers.Count == 0)
+    {
+        Console.WriteLine("No active players available.");
+        return;
+    }
+
+    // Mảng 2D để lưu thông tin bảng xếp hạng: Tên, Mức độ mạnh của bài, Mô tả bài
+    object[,] leaderboard = new object[activePlayers.Count, 4];
+
+    // Điền thông tin vào leaderboard cho các người chơi đủ điều kiện
+    for (int i = 0; i < activePlayers.Count; i++)
+    {
+        Player player = activePlayers[i];
+        var (handStrength, handDescription) = HandEvaluator.EvaluateHand(player.Hand, communityCards);
+        int highCardValue = HandEvaluator.GetHighCardValue(player.Hand.Concat(communityCards).ToList()); // Lấy giá trị high card
+
+        leaderboard[i, 0] = player.Name;           // Tên người chơi
+        leaderboard[i, 1] = handStrength;          // Sức mạnh bài
+        leaderboard[i, 2] = handDescription;       // Mô tả bài
+        leaderboard[i, 3] = highCardValue;         // Giá trị high card
+    }
+
+    // Sắp xếp bảng xếp hạng theo sức mạnh bài (giảm dần) bằng Bubble Sort
+    for (int i = 0; i < activePlayers.Count - 1; i++)
+    {
+        for (int j = i + 1; j < activePlayers.Count; j++)
+        {
+            // So sánh sức mạnh bài
+            int strengthComparison = Convert.ToInt32(leaderboard[i, 1]).CompareTo(Convert.ToInt32(leaderboard[j, 1]));
+            // Nếu sức mạnh bài bằng nhau, so sánh high card
+            if (strengthComparison == 0)
             {
-                // Lọc danh sách người chơi chỉ bao gồm những người không bỏ bài
-                var activePlayers = players
-                    .Where(p => p.InGame && !p.HasFolded)
-                    .ToList();
-
-                if (activePlayers.Count == 0)
-                {
-                    Console.WriteLine("No active players available.");
-                    return;
-                }
-
-                // Mảng 2D để lưu thông tin bảng xếp hạng: Tên, Mức độ mạnh của bài, Mô tả bài
-                object[,] leaderboard = new object[activePlayers.Count, 3];
-
-                // Điền thông tin vào leaderboard cho các người chơi đủ điều kiện
-                for (int i = 0; i < activePlayers.Count; i++)
-                {
-                    Player player = activePlayers[i];
-                    var (handStrength, handDescription) = HandEvaluator.EvaluateHand(player.Hand, communityCards);
-
-                    leaderboard[i, 0] = player.Name;           // Tên người chơi
-                    leaderboard[i, 1] = handStrength;          // Sức mạnh bài
-                    leaderboard[i, 2] = handDescription;       // Mô tả bài
-                }
-
-                // Sắp xếp bảng xếp hạng theo sức mạnh bài (giảm dần) bằng Bubble Sort
-                for (int i = 0; i < activePlayers.Count - 1; i++)
-                {
-                    for (int j = i + 1; j < activePlayers.Count; j++)
-                    {
-                        if (Convert.ToInt32(leaderboard[i, 1]) < Convert.ToInt32(leaderboard[j, 1]))
-                        {
-                            SwapRows(leaderboard, i, j); // Hoán đổi nếu sức mạnh bài nhỏ hơn
-                        }
-                    }
-                }
-
-                // Hiển thị bảng xếp hạng đã sắp xếp
-                Frame.Screen(84, 28);
-                Frame.Music();
-                Frame.Drawshowdown();
-                for (int i = 0; i < activePlayers.Count; i++)
-                {
-                    int rank = i + 1;
-
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"                    #{rank}. Player {leaderboard[i, 0]} - Hand Strength: {leaderboard[i, 1]} - {leaderboard[i, 2]}");
-                    Console.ResetColor();
-                }
-                Console.WriteLine("                          Press any key to continue...");
-                Console.ReadKey();
-
-                Frame.Screen(84, 28);
-                Console.SetCursorPosition((84) / 2 - 5, 28 / 2);
+                strengthComparison = Convert.ToInt32(leaderboard[i, 3]).CompareTo(Convert.ToInt32(leaderboard[j, 3]));
             }
+
+            // Hoán đổi nếu cần
+            if (strengthComparison < 0) // Nếu bài i mạnh hơn bài j
+            {
+                SwapRows(leaderboard, i, j); // Hoán đổi vị trí
+            }
+        }
+    }
+
+    // Hiển thị bảng xếp hạng đã sắp xếp
+    Frame.Screen(84, 28);
+    Frame.Music();
+    Frame.Drawshowdown();
+    for (int i = 0; i < activePlayers.Count; i++)
+    {
+        int rank = i + 1;
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"                    #{rank}. Player {leaderboard[i, 0]} - Hand Strength: {leaderboard[i, 1]} - {leaderboard[i, 2]}");
+        Console.ResetColor();
+    }
+    Console.WriteLine("                          Press any key to continue...");
+    Console.ReadKey();
+
+    Frame.Screen(84, 28);
+    Console.SetCursorPosition((84) / 2 - 5, 28 / 2);
+}
+
 
             private void SwapRows(object[,] array, int row1, int row2)
             {
