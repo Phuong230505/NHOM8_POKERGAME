@@ -1043,7 +1043,7 @@ namespace CK
     }
     else
     {
-        Console.WriteLine("           Invalid input. Please enter a number between 2 and 5.");
+        Console.WriteLine("                      Invalid input. Please enter a number between 2 and 5.");
         System.Threading.Thread.Sleep(2000); // Chờ 2 giây để người chơi đọc thông báo
     }
 } while (true);
