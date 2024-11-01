@@ -1028,14 +1028,25 @@ namespace CK
 
                 sound.Play();
                 do
-                {
-                    Console.Clear();
-                    Frame.Screen(84, 28);
-                    Console.SetCursorPosition((60) / 2 - 5, 22 / 2);
+{
+    Console.Clear();
+    Frame.Screen(84, 28);
+    Console.SetCursorPosition(60 / 2 - 5, 22 / 2);
 
-                    Console.Write("Enter the number of players (min:2 & max:5) ");
-                    numPlayers = Convert.ToInt32(Console.ReadLine());
-                } while (numPlayers < 2 || numPlayers > 5);
+    Console.Write("Enter the number of players (min:2 & max:5): ");
+    string input = Console.ReadLine();
+
+    // Kiểm tra đầu vào có hợp lệ và có nằm trong khoảng 2-5 không
+    if (int.TryParse(input, out numPlayers) && numPlayers >= 2 && numPlayers <= 5)
+    {
+        break; // Nếu đúng, thoát khỏi vòng lặp
+    }
+    else
+    {
+        Console.WriteLine("           Invalid input. Please enter a number between 2 and 5.");
+        System.Threading.Thread.Sleep(2000); // Chờ 2 giây để người chơi đọc thông báo
+    }
+} while (true);
                 Console.WriteLine();
 
                 var players = new List<Player>();
